@@ -35,7 +35,7 @@ def cameraCalibrate():
     pass
 
 def loadImage(filename):
-    targetWidth = 1920
+    targetWidth = 1080
     image = cv2.imread(filename)
 
     scale = targetWidth / image.shape[1]
@@ -46,41 +46,45 @@ def loadImage(filename):
     return image
 
 if __name__ == '__main__':
-    original = loadImage('images/mats/0.jpg')
-    cv2.imshow('original', original)
+        original = loadImage('images/mats/a4.jpg')
+        cv2.imshow('original', original)
 
-    hsv = cv2.cvtColor(original, cv2.COLOR_BGR2HSV)
-    # lower bound and upper bound for Green color
-    color_lower = np.array([50, 100, 100])
-    color_upper = np.array([75, 255, 255])
-    mask = cv2.inRange(hsv, color_lower, color_upper)
+        hsv = cv2.cvtColor(original, cv2.COLOR_BGR2HSV)
+        # lower bound and upper bound for Blue color
+        color_lower = np.array([111, 103, 67])
+        color_upper = np.array([146, 242, 201])
+        # lower bound and upper bound for Green color
+        # color_lower = np.array([50, 100, 100])
+        # color_upper = np.array([75, 255, 255])
+        mask = cv2.inRange(hsv, color_lower, color_upper)
 
-    kernel = np.ones((13, 13), np.uint8)
-    closing = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+        kernel = np.ones((13, 13), np.uint8)
+        closing = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
-    contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    print(f'found {len(contours)} contours')
-    result = original.copy()
-    cv2.drawContours(result, contours, -1, (255, 0, 0), 3)
+        contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        print(f'found {len(contours)} contours')
+        result = original.copy()
+        cv2.drawContours(result, contours, -1, (255, 0, 0), 3)
 
-    for cnt in contours:
-        rect = cv2.boundingRect(cnt)
-        print(f'bound rect at [{rect[0]};{rect[1]}] {rect[2]}x{rect[3]}')
-        minRect = cv2.minAreaRect(cnt)
+        for cnt in contours:
+            rect = cv2.boundingRect(cnt)
+            print(f'bound rect at [{rect[0]};{rect[1]}] {rect[2]}x{rect[3]}')
+            minRect = cv2.minAreaRect(cnt)
 
-        print(f'min rect {minRect[1][0]}x{minRect[1][1]}')
+            print(f'min rect {minRect[1][0]}x{minRect[1][1]}')
 
-        box = cv2.boxPoints(minRect)
-        print(f'boxPoint at [{box[0][0]};{box[0][1]}]')
-        box = np.intp(box)
-        cv2.drawContours(result, [box], 0, (0, 0, 255))
+            box = cv2.boxPoints(minRect)
+            print(f'boxPoint at [{box[0][0]};{box[0][1]}]')
+            box = np.intp(box)
+            cv2.drawContours(result, [box], 0, (0, 0, 255))
 
-        cv2.rectangle(result, (int(rect[0]), int(rect[1])), (int(rect[0]+rect[2]), int(rect[1]+rect[3])), (0, 255, 0), 1)
+            cv2.rectangle(result, (int(rect[0]), int(rect[1])), (int(rect[0] + rect[2]), int(rect[1] + rect[3])),
+                          (0, 255, 0), 1)
 
-    cv2.imshow('mask', mask)
-    cv2.imshow('closing', closing)
+        cv2.imshow('mask', mask)
+        cv2.imshow('closing', closing)
 
-    cv2.imshow('result', result)
+        cv2.imshow('result', result)
 
-    cv2.waitKey()
-    cv2.destroyAllWindows()
+        cv2.waitKey()
+        cv2.destroyAllWindows()
