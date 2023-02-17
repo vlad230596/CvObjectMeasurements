@@ -4,7 +4,7 @@ import glob
 
 
 def cameraCalibrate():
-    chessboardWidth = 13
+    chessboardWidth = 12
     chessboardHeight = 9
 
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
@@ -14,10 +14,10 @@ def cameraCalibrate():
     # Arrays to store object points and image points from all the images.
     objpoints = []  # 3d point in real world space
     imgpoints = []  # 2d points in image plane.
-    images = glob.glob('images/calibration/1.jpg')
+    images = glob.glob('images/calibration/12_9/*.jpg')
     for fname in images:
         print(f'load {fname}')
-        img = cv2.imread(fname)
+        img = loadImage(fname)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         # Find the chess board corners
         ret, corners = cv2.findChessboardCorners(gray, (chessboardHeight, chessboardWidth), None)
@@ -32,10 +32,33 @@ def cameraCalibrate():
             cv2.imshow('img', img)
             cv2.waitKey(5000)
     cv2.destroyAllWindows()
+    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
+
+    img = loadImage('images/calibration/12_9/IMG_0022.JPG')
+    h, w = img.shape[:2]
+    newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (w, h))
+
+    # undistort
+    dst = cv2.undistort(img, mtx, dist, None, newcameramtx)
+    cv2.imshow('dst', dst)
+    # crop the image
+    x, y, w, h = roi
+    dst = dst[y:y + h, x:x + w]
+    cv2.imshow('dst crop', dst)
+
+    mean_error = 0
+    for i in range(len(objpoints)):
+        imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], mtx, dist)
+        error = cv2.norm(imgpoints[i], imgpoints2, cv2.NORM_L2) / len(imgpoints2)
+        mean_error += error
+    print("total error: {}".format(mean_error / len(objpoints)))
+
+    cv2.waitKey()
+    cv2.destroyAllWindows()
     pass
 
 def loadImage(filename):
-    targetWidth = 1080
+    targetWidth = 1920
     image = cv2.imread(filename)
 
     scale = targetWidth / image.shape[1]
@@ -46,45 +69,47 @@ def loadImage(filename):
     return image
 
 if __name__ == '__main__':
-        original = loadImage('images/mats/a4.jpg')
-        cv2.imshow('original', original)
+    cameraCalibrate()
 
-        hsv = cv2.cvtColor(original, cv2.COLOR_BGR2HSV)
-        # lower bound and upper bound for Blue color
-        color_lower = np.array([111, 103, 67])
-        color_upper = np.array([146, 242, 201])
-        # lower bound and upper bound for Green color
-        # color_lower = np.array([50, 100, 100])
-        # color_upper = np.array([75, 255, 255])
-        mask = cv2.inRange(hsv, color_lower, color_upper)
+    original = loadImage('images/mats/a4.jpg')
+    cv2.imshow('original', original)
 
-        kernel = np.ones((13, 13), np.uint8)
-        closing = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    hsv = cv2.cvtColor(original, cv2.COLOR_BGR2HSV)
+    # lower bound and upper bound for Blue color
+    color_lower = np.array([111, 103, 67])
+    color_upper = np.array([146, 242, 201])
+    # lower bound and upper bound for Green color
+    # color_lower = np.array([50, 100, 100])
+    # color_upper = np.array([75, 255, 255])
+    mask = cv2.inRange(hsv, color_lower, color_upper)
 
-        contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        print(f'found {len(contours)} contours')
-        result = original.copy()
-        cv2.drawContours(result, contours, -1, (255, 0, 0), 3)
+    kernel = np.ones((13, 13), np.uint8)
+    closing = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
-        for cnt in contours:
-            rect = cv2.boundingRect(cnt)
-            print(f'bound rect at [{rect[0]};{rect[1]}] {rect[2]}x{rect[3]}')
-            minRect = cv2.minAreaRect(cnt)
+    contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    print(f'found {len(contours)} contours')
+    result = original.copy()
+    cv2.drawContours(result, contours, -1, (255, 0, 0), 3)
 
-            print(f'min rect {minRect[1][0]}x{minRect[1][1]}')
+    for cnt in contours:
+        rect = cv2.boundingRect(cnt)
+        print(f'bound rect at [{rect[0]};{rect[1]}] {rect[2]}x{rect[3]}')
+        minRect = cv2.minAreaRect(cnt)
 
-            box = cv2.boxPoints(minRect)
-            print(f'boxPoint at [{box[0][0]};{box[0][1]}]')
-            box = np.intp(box)
-            cv2.drawContours(result, [box], 0, (0, 0, 255))
+        print(f'min rect {minRect[1][0]}x{minRect[1][1]}')
 
-            cv2.rectangle(result, (int(rect[0]), int(rect[1])), (int(rect[0] + rect[2]), int(rect[1] + rect[3])),
-                          (0, 255, 0), 1)
+        box = cv2.boxPoints(minRect)
+        print(f'boxPoint at [{box[0][0]};{box[0][1]}]')
+        box = np.intp(box)
+        cv2.drawContours(result, [box], 0, (0, 0, 255))
 
-        cv2.imshow('mask', mask)
-        cv2.imshow('closing', closing)
+        cv2.rectangle(result, (int(rect[0]), int(rect[1])), (int(rect[0] + rect[2]), int(rect[1] + rect[3])),
+                      (0, 255, 0), 1)
 
-        cv2.imshow('result', result)
+    cv2.imshow('mask', mask)
+    cv2.imshow('closing', closing)
 
-        cv2.waitKey()
-        cv2.destroyAllWindows()
+    cv2.imshow('result', result)
+
+    cv2.waitKey()
+    cv2.destroyAllWindows()
