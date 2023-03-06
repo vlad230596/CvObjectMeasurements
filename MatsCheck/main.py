@@ -23,8 +23,8 @@ def undistort(img, calibrationData):
     dst = cv2.undistort(img, calibrationData['mtx'], calibrationData['dist'], None, newcameramtx)
     return dst
 def saveCameraCalibrationData(filename):
-    chessboardWidth = 12
-    chessboardHeight = 9
+    chessboardWidth = 7
+    chessboardHeight = 7
 
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
     # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
@@ -33,7 +33,7 @@ def saveCameraCalibrationData(filename):
     # Arrays to store object points and image points from all the images.
     objpoints = []  # 3d point in real world space
     imgpoints = []  # 2d points in image plane.
-    images = glob.glob('images/calibration/12_9/*.jpg')
+    images = glob.glob('images/calibration/9_9/*.jpg')
     for fname in images:
         print(f'load {fname}')
         img = loadImage(fname)
@@ -139,11 +139,11 @@ def calculateBoxParameters(points):
 
 
 if __name__ == '__main__':
-    #saveCameraCalibrationData('calibration.json')
+    saveCameraCalibrationData('calibration.json')
 
     cailbrationData = readCameraCalibrationData('calibration.json')
 
-    original = loadImage('images/mats/bigExposure/h0.JPG')
+    original = loadImage('images/mats/h2_0.JPG')
     undist = undistort(original, cailbrationData)
 
     #cv2.imshow('undist', undist)
