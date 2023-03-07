@@ -33,7 +33,7 @@ def saveCameraCalibrationData(filename):
     # Arrays to store object points and image points from all the images.
     objpoints = []  # 3d point in real world space
     imgpoints = []  # 2d points in image plane.
-    images = glob.glob('images/calibration/9_9/*.jpg')
+    images = glob.glob('images/calibration/9_9/*.JPG')
     for fname in images:
         print(f'load {fname}')
         img = loadImage(fname)
@@ -67,14 +67,14 @@ def saveCameraCalibrationData(filename):
     print("total error: {}".format(mean_error / len(objpoints)))
 
 def loadImage(filename):
-    targetWidth = 1920
+    targetWidth = 3840
     image = cv2.imread(filename)
 
     scale = targetWidth / image.shape[1]
     width = int(image.shape[1] * scale)
     height = int(image.shape[0] * scale)
     dim = (width, height)
-    image = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
+    #image = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
     return image
 
 def getScaledImage(image, targetWidth = 1920):
@@ -101,7 +101,7 @@ def cropWorkZone(image):
             color = colors.Red
         cv2.rectangle(image, (int(rect[0]), int(rect[1])), (int(rect[0] + rect[2]), int(rect[1] + rect[3])),
                       color, 1)
-    cv2.imshow('cropCnt', image)
+    #cv2.imshow('cropCnt', image)
 
     x, y, w, h = cv2.boundingRect(biggest)
     result = image[y:y + h, x:x + w]
@@ -143,48 +143,52 @@ if __name__ == '__main__':
 
     cailbrationData = readCameraCalibrationData('calibration.json')
 
-    original = loadImage('images/mats/h2_0.JPG')
-    undist = undistort(original, cailbrationData)
+    imagesPath = glob.glob('images/mats/*.JPG')
+    for imagePath in imagesPath:
+        print(f'\nProcessed: {imagePath}')
+        original = loadImage(imagePath)
+        #original = loadImage('images/calibration/9_9/IMG_0055.JPG')
+        undist = undistort(original, cailbrationData)
 
-    #cv2.imshow('undist', undist)
+        #cv2.imshow('undist', undist)
 
-    cropped = cropWorkZone(undist)
-    cv2.imshow('cropped', cropped)
+        cropped = cropWorkZone(undist)
+        #cv2.imshow('cropped', cropped)
 
-    hsv = cv2.cvtColor(cropped, cv2.COLOR_BGR2HSV)
-    # lower bound and upper bound for Green color
-    color_lower = np.array([50, 100, 100])
-    color_upper = np.array([75, 255, 255])
-    mask = cv2.inRange(hsv, color_lower, color_upper)
+        hsv = cv2.cvtColor(cropped, cv2.COLOR_BGR2HSV)
+        # lower bound and upper bound for Green color
+        color_lower = np.array([50, 50, 100])
+        color_upper = np.array([75, 255, 255])
+        mask = cv2.inRange(hsv, color_lower, color_upper)
 
-    kernel = np.ones((13, 13), np.uint8)
-    closing = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+        kernel = np.ones((13, 13), np.uint8)
+        closing = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
-    contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    print(f'found {len(contours)} contours')
-    result = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+        contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        print(f'found {len(contours)} contours')
+        result = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
 
-    cv2.drawContours(result, contours, -1, colors.Blue, 3)
-    biggest = max(contours, key=lambda current: cv2.boundingRect(current)[2] * cv2.boundingRect(current)[3])
+        cv2.drawContours(result, contours, -1, colors.Blue, 3)
+        biggest = max(contours, key=lambda current: cv2.boundingRect(current)[2] * cv2.boundingRect(current)[3])
 
-    rect = cv2.boundingRect(biggest)
-    print(f'bound rect at [{rect[0]};{rect[1]}] {rect[2]}x{rect[3]}')
-    minRect = cv2.minAreaRect(biggest)
+        rect = cv2.boundingRect(biggest)
+        print(f'bound rect at [{rect[0]};{rect[1]}] {rect[2]}x{rect[3]}')
+        minRect = cv2.minAreaRect(biggest)
 
-    print(f'min rect {minRect[1][0]}x{minRect[1][1]}')
+        print(f'min rect {minRect[1][0]}x{minRect[1][1]}')
 
-    box = cv2.boxPoints(minRect)
-    calculateBoxParameters(box)
-    print(f'boxPoint at [{box[0][0]};{box[0][1]}]')
-    box = np.intp(box)
+        box = cv2.boxPoints(minRect)
+        calculateBoxParameters(box)
+        print(f'boxPoint at [{box[0][0]};{box[0][1]}]')
+        box = np.intp(box)
 
-    cv2.drawContours(result, [box], 0, colors.Red)
+        cv2.drawContours(result, [box], 0, colors.Red)
 
-    # cv2.imshow('mask', mask)
-    # cv2.imshow('closing', closing)
-    #
-    cv2.imshow('result', getScaledImage(result, 1200))
-    zoom.PanZoomWindow(result, 'Result')
+        # cv2.imshow('mask', mask)
+        # cv2.imshow('closing', closing)
+        #
+        cv2.imshow(f'result{imagePath}', getScaledImage(result, 1200))
+        #zoom.PanZoomWindow(result, 'Result')
 
     cv2.waitKey()
     cv2.destroyAllWindows()
