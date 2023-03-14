@@ -22,9 +22,7 @@ def undistort(img, calibrationData):
     newcameramtx, roi = cv2.getOptimalNewCameraMatrix(calibrationData['mtx'], calibrationData['dist'], (w, h), 1, (w, h))
     dst = cv2.undistort(img, calibrationData['mtx'], calibrationData['dist'], None, newcameramtx)
     return dst
-def saveCameraCalibrationData(filename):
-    chessboardWidth = 7
-    chessboardHeight = 7
+def saveCameraCalibrationData(calibrationFilesMask, chessboardWidth, chessboardHeight, outputFilename):
 
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
     # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
@@ -33,11 +31,12 @@ def saveCameraCalibrationData(filename):
     # Arrays to store object points and image points from all the images.
     objpoints = []  # 3d point in real world space
     imgpoints = []  # 2d points in image plane.
-    images = glob.glob('images/calibration/9_9/*.JPG')
+    images = glob.glob(calibrationFilesMask)
     for fname in images:
         print(f'load {fname}')
         img = loadImage(fname)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
         # Find the chess board corners
         ret, corners = cv2.findChessboardCorners(gray, (chessboardHeight, chessboardWidth), None)
         # If found, add object points, image points (after refining them)
@@ -49,7 +48,7 @@ def saveCameraCalibrationData(filename):
             # Draw and display the corners
             cv2.drawChessboardCorners(img, (chessboardHeight, chessboardWidth), corners2, ret)
             cv2.imshow('img', img)
-            cv2.waitKey(5000)
+            cv2.waitKey(10)
     cv2.destroyAllWindows()
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
 
@@ -57,24 +56,25 @@ def saveCameraCalibrationData(filename):
     result['mtx'] = mtx
     result['dist'] = dist
 
-    eniUtils.writeJson(filename, result)
+    eniUtils.writeJson(outputFilename, result)
 
     mean_error = 0
     for i in range(len(objpoints)):
         imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], mtx, dist)
         error = cv2.norm(imgpoints[i], imgpoints2, cv2.NORM_L2) / len(imgpoints2)
+        print(f'i = {i} error = {error}')
         mean_error += error
     print("total error: {}".format(mean_error / len(objpoints)))
 
 def loadImage(filename):
-    targetWidth = 3840
+    targetWidth = 1920
     image = cv2.imread(filename)
 
     scale = targetWidth / image.shape[1]
     width = int(image.shape[1] * scale)
     height = int(image.shape[0] * scale)
     dim = (width, height)
-    #image = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
+    image = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
     return image
 
 def getScaledImage(image, targetWidth = 1920):
@@ -139,7 +139,8 @@ def calculateBoxParameters(points):
 
 
 if __name__ == '__main__':
-    saveCameraCalibrationData('calibration.json')
+    saveCameraCalibrationData('images/calibration/7_7/*.JPG', 7, 7, 'calibration.json')
+    #saveCameraCalibrationData('images/calibration/Checker2.0/*.JPG', 7, 7, 'calibration.json')
 
     cailbrationData = readCameraCalibrationData('calibration.json')
 
